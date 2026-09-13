@@ -1,6 +1,8 @@
-import random
-import string
-import json
+import random   #für password generator
+import string   #um possible characters einfacher darzustellen
+import json     #speichern und laden meiner datei wo alles gespeichert wird
+from cryptography.fernet import Fernet #zum encrypten/decrypten der passwörter
+import os
 
 # Hier wird alles drinnen gespeichert, später dann in einer json
 safe = {}
@@ -8,20 +10,51 @@ safe = {}
 # alle möglichen characters
 possible_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits + "!+-.,#?$%*"
 
+#directory für encrypten decrpyten
+script_dir = os.path.dirname(os.path.abspath(__file__))
+keys_dir = os.path.join(script_dir,"..","KEYS")
 
+#lädt die gespeicherten daten in die session
 def load_from_file(filename="passwords.json"):
     global safe
     try:
-        with open(filename, "r") as f:
+        with open(os.path.join(script_dir,filename), "r") as f:
             safe = json.load(f)
     except FileNotFoundError:
         safe = {}
 
-
+#speichert alles auf die json file
 def save_to_file(filename="passwords.json"):
-    with open(filename, "w") as f:
+    with open(os.path.join(script_dir,filename), "w") as f:
         json.dump(safe, f, indent=4)
 
+#generiert den fernet key zum crypten
+def load_or_create_key():
+    if not os.path.exists(keys_dir):
+        os.makedirs(keys_dir)
+    try:
+        with open(os.path.join(keys_dir,"password_key.key"), "rb") as f:
+            loaded_key = f.read()
+        return loaded_key
+    except FileNotFoundError:
+        key = Fernet.generate_key()
+        with open(os.path.join(keys_dir,"password_key.key"), "wb") as f:
+            f.write(key)
+        return key
+    
+#encrypten des passworts
+def encrypt_password(encrypted_password):
+    key = load_or_create_key()
+    fernet = Fernet(key)
+    encrypted = fernet.encrypt(encrypted_password.encode())
+    return encrypted.decode()
+
+#decrypten des passworts
+def decrypt_password(encrypted_password):
+    key = load_or_create_key()
+    fernet = Fernet(key)
+    decrypted = fernet.decrypt(encrypted_password.encode())
+    return decrypted.decode()
 
 # Password generator für reines Password generieren
 def password_generator(min_char=8, max_chars=20):
@@ -39,7 +72,7 @@ def is_password_valid(password, min_length=8):
     return True
 
 #Hinzufügen von einem Password
-def add_password(password=None, username=None, service=None):
+def create_password(password=None, username=None, service=None):
 
     while service is None or service_choice == "n":
         service = input("For what service do you want to create an entry? *casesensitive*  ")
@@ -96,7 +129,7 @@ Password Conditions:
         if username_choice == "":
             print("Great, now that's finished too!")
 
-    safe[service] = {"username": username, "password": password}
+    safe[service] = {"username": username, "password": encrypt_password(password)}
     save_to_file()
     print(f"""
         Service: {service}
@@ -121,7 +154,7 @@ def update_password():
     print(f"""
     Service: {service}
     Username: {safe[service]["username"]}
-    Password: {safe[service]["password"]}
+    Password: {decrypt_password(safe[service]["password"])}
     """)
 
     print("""
@@ -148,7 +181,7 @@ What do you want to change?
 
     #Password changen
     if choice in ("2", "3"):
-        print("Your current password: ", safe[service]["password"])
+        print("Your current password: ", decrypt_password(safe[service]["password"]))
         password_confirmed = False
 
         while not password_confirmed:
@@ -182,11 +215,11 @@ Password Conditions:
                         else:
                             password_confirmed = True
 
-        safe[service]["password"] = password
+        safe[service]["password"] = encrypt_password(password)
         save_to_file()
         print("Great, password confirmed and saved!")
 
-
+#hier kann man die passwörter anschauen die bisher gespeichert wurden
 def view_password():
     choice = input("View a specific service or all your saved data? (s/a)   ")
     while choice.lower() != "s" and choice.lower() != "a":
@@ -196,14 +229,14 @@ def view_password():
         while service_choice not in safe:
             service_choice = input("Please enter an already existing service, or create a new one by typing 'new':   ")
             if service_choice.lower() == "new":
-                add_password()
+                create_password()
                 return
         print(f"""
 Your saved data:
 
 Service: {service_choice}
 Username: {safe[service_choice]["username"]}
-Password: {safe[service_choice]["password"]}
+Password: {decrypt_password(safe[service_choice]["password"])}
 
         """)
         return
@@ -213,14 +246,14 @@ Password: {safe[service_choice]["password"]}
 ---------------------------------------------
 Service: {i}
 Username: {safe[i]["username"]}
-Password: {safe[i]["password"]}
+Password: {decrypt_password(safe[i]["password"])}
 ---------------------------------------------
 """)
         return
 
 
 
-
+#entfernen eines Eintrags
 def delete_password():
     choice = input("Which service do you want to delete?    ")
     while choice not in safe and choice.lower() != "quit":
@@ -241,6 +274,7 @@ def delete_password():
             print("Deletion prevented.")
             return
 
-
 load_from_file()
+load_or_create_key()
 delete_password()
+view_password()
