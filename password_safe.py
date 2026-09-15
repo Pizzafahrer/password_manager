@@ -78,8 +78,8 @@ def create_password():
     overwrite = False    
     service = st.text_input("Service(casesensitive): ").strip()
     username = st.text_input("Username/Email:").strip()
-    password = st.text_input("Password:").strip()
-    password_confirm = st.text_input("Confirm password:").strip()
+    password = st.text_input("Password:", type="password").strip()
+    password_confirm = st.text_input("Confirm password:", type="password").strip()
     if st.button("Save:"):
         if service == "":
             st.error("Service can't be empty!")
@@ -108,11 +108,108 @@ Password Conditions:
 
         if overwrite == True:
                 safe[service] = {"username": username, "password": encrypt_password(password)}
+                save_to_file()
                 st.success("Succesfully saved!")
+
+
+
+def dashboard():
+    if "edit_username" not in st.session_state:
+        st.session_state.edit_username = None
+    if "edit_password" not in st.session_state:
+            st.session_state.edit_password = None
+    for i in safe:
+        with st.expander(i):
+            col1, col2, col3 = st.columns([2, 3, 1], vertical_alignment="center")
+            with col1:
+                st.write("Username/Email:")
+            with col2:
+                if st.session_state.edit_username == i:
+                    username = st.text_input(safe[i]['username'])
+                    col4, col5 = st.columns([1,2])
+                    with col4:
+                        if st.button("Save", key="btn_username"):
+                            if not username == "":
+                                safe[i]["username"] = username
+                                save_to_file()
+                                st.session_state.edit_username = None
+                                st.rerun()
+                            else:
+                                with col5:
+                                    st.caption("Username/Email can't be empty!")
+                else:
+                    st.markdown(f"`{safe[i]['username']}`")
+            with col3:
+                if st.button("Change", key = f"btn_up{i}"):
+                    st.session_state.edit_username = i
+                    st.rerun()
+
+#password teil
+            col1, col2, col3 = st.columns([2,3,1], vertical_alignment = "center")
+            with col1:
+                st.write("Password:")
+            with col2:
+                if st.session_state.edit_password == i:
+                    password = st.text_input(decrypt_password(safe[i]['password']), type="password")
+                    col4,col5 = st.columns([1,2])
+                    with col4:
+                        if st.button("Save", key= "btn_password"):
+                            if not is_password_valid(password):
+                                with col5:
+                                    if not is_password_valid(password):
+                                        st.caption("The password isn't valid.")
+                                        st.text("""
+                                Password Conditions:
+                                
+                                - Only upper- and lowercase letters
+                                - 0-9 digits
+                                - !+-.,#?$%* are allowed
+                                - min. 8 characters
+                                            """)
+                            else:
+                                safe[i]["password"] = encrypt_password(password)
+                                save_to_file()
+                                st.session_state.edit_password = None
+                                st.rerun()
+                    
+                else:
+                    st.markdown(f"`{decrypt_password(safe[i]['password'])}`")
+            with col3:
+                if st.button("Change", key= f"btn_down{i}"):
+                    st.session_state.edit_password = i
+                    st.rerun()
+    save_to_file()
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Updaten eines Password/Username
 def update_password():
+
+
+
+
+
+
+
+    
+    
+
+
+
+
+
+
+
     service = input("For which service do you want to change your login credentials? *casesensitive  ")
     while service == "":
         service = input("You can't enter an empty input:   ")
@@ -190,6 +287,8 @@ Password Conditions:
         save_to_file()
         print("Great, password confirmed and saved!")
 
+
+
 #hier kann man die passwörter anschauen die bisher gespeichert wurden
 def read_password():
     choice = input("View a specific service or all your saved data? (s/a)   ")
@@ -244,7 +343,7 @@ def delete_password():
         else:
             print("Deletion prevented.")
             return
-
 load_from_file()
 load_or_create_key()
 create_password()
+dashboard()
