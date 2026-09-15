@@ -2,7 +2,8 @@ import random   #für password generator
 import string   #um possible characters einfacher darzustellen
 import json     #speichern und laden meiner datei wo alles gespeichert wird
 from cryptography.fernet import Fernet #zum encrypten/decrypten der passwörter
-import os
+import streamlit as st  #für mein browser UI
+import os   #um die paths für das cryptographen, laden, speichern einfacher zu machen
 
 # Hier wird alles drinnen gespeichert, später dann in einer json
 safe = {}
@@ -72,43 +73,23 @@ def is_password_valid(password, min_length=8):
     return True
 
 #Hinzufügen von einem Password
-def create_password(password=None, username=None, service=None):
+def create_password():
 
-    while service is None or service_choice == "n":
-        service = input("For what service do you want to create an entry? *casesensitive*  ")
-        while service == "":
-            service = input("Service can't be empty. Please retry:   ")
-        print("Your input: ", service)
-        service_choice = input("Press Enter to confirm, or type 'n' to re-enter:   ")
-        while service_choice.lower() != "" and service_choice.lower() != "n":
-            service_choice = input("Please press Enter or type 'n':   ")
-        if service_choice == "":
-            print("Well done!")
-    if service in safe:
-        print("You already have data saved for this service.    ")
-        choice = input("Do you want to change your password? Press Enter for yes, or type 'n' for no:   ")
-        while choice.lower() != "" and choice.lower() != "n":
-            choice = input("Please press Enter or type 'n':   ")
-        if choice.lower() == "":
-            update_password()
-            return
-        else:
-            return
-
-    while password is None:
-        password_choice = input("Enter your password or hit Enter for a random one:   ")
-        if password_choice == "":
-            password_choice = password_generator()
-            print("Generated:", password_choice)
-            confirm = input("Press Enter to accept it, or type 'n' to redo:   ")
-            while confirm.lower() != "" and confirm.lower() != "n":
-                confirm = input("Please press Enter or type 'n':   ")
-            if confirm.lower() == "":
-                password = password_choice
-        elif is_password_valid(password_choice):
-            password = password_choice
-        else:
-            print("""
+    overwrite = False    
+    service = st.text_input("Service(casesensitive): ").strip()
+    username = st.text_input("Username/Email:").strip()
+    password = st.text_input("Password:").strip()
+    password_confirm = st.text_input("Confirm password:").strip()
+    if st.button("Save:"):
+        if service == "":
+            st.error("Service can't be empty!")
+        elif username == "":
+            st.error("Username/Email can't be empty!")
+        elif password == "" or password_confirm == "":
+            st.error("Password can't be empty!")
+        elif not is_password_valid(password):
+            st.error("The password isn't valid.")
+            st.text("""
 Password Conditions:
 
 - Only upper- and lowercase letters
@@ -117,27 +98,17 @@ Password Conditions:
 - min. 8 characters
 
             """)
+        elif password != password_confirm:
+            st.error("The passwords don't match!")
+        elif service in safe:
+            st.warning(f"An entry for '{service}' already exists.")
+            overwrite = st.checkbox("Overwrite existing entry?")
+        else:
+            overwrite = True
 
-    while username is None or username_choice == "n":
-        username = input("Lastly your username/email:   ")
-        while username == "":
-            username = input("Username/email can't be empty. Please retry:   ")
-        print("Your input: ", username)
-        username_choice = input("Press Enter to confirm, or type 'n' to re-enter:   ")
-        while username_choice.lower() != "" and username_choice.lower() != "n":
-            username_choice = input("Please press Enter or type 'n':   ")
-        if username_choice == "":
-            print("Great, now that's finished too!")
-
-    safe[service] = {"username": username, "password": encrypt_password(password)}
-    save_to_file()
-    print(f"""
-        Service: {service}
-        Username: {username}
-        Password: {password}
-
-        Succesfully saved!
-    """)
+        if overwrite == True:
+                safe[service] = {"username": username, "password": encrypt_password(password)}
+                st.success("Succesfully saved!")
 
 
 # Updaten eines Password/Username
@@ -220,7 +191,7 @@ Password Conditions:
         print("Great, password confirmed and saved!")
 
 #hier kann man die passwörter anschauen die bisher gespeichert wurden
-def view_password():
+def read_password():
     choice = input("View a specific service or all your saved data? (s/a)   ")
     while choice.lower() != "s" and choice.lower() != "a":
         choice = input("Please enter either 's' for specific or 'a' for all:   ")
@@ -276,5 +247,4 @@ def delete_password():
 
 load_from_file()
 load_or_create_key()
-delete_password()
-view_password()
+create_password()
