@@ -114,6 +114,9 @@ Password Conditions:
 
 
 def dashboard():
+    caption = False
+    if "delete_confirm" not in st.session_state:
+        st.session_state.delete_confirm = None
     if "edit_username" not in st.session_state:
         st.session_state.edit_username = None
     if "edit_password" not in st.session_state:
@@ -125,7 +128,7 @@ def dashboard():
                 st.write("Username/Email:")
             with col2:
                 if st.session_state.edit_username == i:
-                    username = st.text_input(safe[i]['username'])
+                    username = st.text_input("New username:", value=safe[i]["username"])
                     col4, col5 = st.columns([1,2])
                     with col4:
                         if st.button("Save", key="btn_username"):
@@ -150,10 +153,10 @@ def dashboard():
                 st.write("Password:")
             with col2:
                 if st.session_state.edit_password == i:
-                    password = st.text_input(decrypt_password(safe[i]['password']), type="password")
+                    password = st.text_input("New password:", type="password", value=decrypt_password(safe[i]["password"]))
                     col4,col5 = st.columns([1,2])
                     with col4:
-                        if st.button("Save", key= "btn_password"):
+                        if st.button("Save", key= f"btn_password{safe[i]}"):
                             if not is_password_valid(password):
                                 with col5:
                                     if not is_password_valid(password):
@@ -178,171 +181,32 @@ def dashboard():
                 if st.button("Change", key= f"btn_down{i}"):
                     st.session_state.edit_password = i
                     st.rerun()
+#deletion teil
+            col1,col2= st.columns([1,5], vertical_alignment="center")
+            with col1:
+                if st.button("Delete", key=f"btn_deletion{safe[i]}"):
+                    if st.session_state.delete_confirm == i:
+                        del safe[i]
+                        save_to_file()
+                        return
+                    else:
+                        caption = True
+
+            with col2:
+                if st.checkbox("Confirm deletion", key=f"check_deletion{safe[i]}"):
+                    st.session_state.delete_confirm = i
+
+            if caption == True:
+                st.caption("Please check the textbox on the right.")
+
+
+
+
     save_to_file()
 
 
 
 
-
-
-
-
-
-
-
-
-
-# Updaten eines Password/Username
-def update_password():
-
-
-
-
-
-
-
-    
-    
-
-
-
-
-
-
-
-    service = input("For which service do you want to change your login credentials? *casesensitive  ")
-    while service == "":
-        service = input("You can't enter an empty input:   ")
-
-    while service not in safe:
-        print(f"There is no such service as {service}")
-        service = input("Please enter an existing service or enter 'quit' to leave the programm:   ")
-        if service.lower() == "quit":
-            return
-    print(f"""
-    Service: {service}
-    Username: {safe[service]["username"]}
-    Password: {decrypt_password(safe[service]["password"])}
-    """)
-
-    print("""
-What do you want to change?
-
-1 - Username/email
-2 - Password
-3 - Both
-""")
-    choice = input("Your choice:   ")
-
-    while choice != "1" and choice != "2" and choice != "3":
-        choice = input("Please enter 1, 2 or 3:   ")
-
-    #Username changen
-    if choice in ("1", "3"):
-        print("Your current username/email: ", safe[service]["username"])
-        username = input("What shall your changed login credential be?\n")
-        if username == "":
-            username = "[no username/email given]"
-        safe[service]["username"] = username
-        save_to_file()
-        print(f"Succesfully changed your username/email to {username}")
-
-    #Password changen
-    if choice in ("2", "3"):
-        print("Your current password: ", decrypt_password(safe[service]["password"]))
-        password_confirmed = False
-
-        while not password_confirmed:
-            password_choice = input("Press Enter for a random generated password, or type 'n' to choose your own:   ")
-            while password_choice.lower() != "" and password_choice.lower() != "n":
-                password_choice = input("Please press Enter or type 'n':   ")
-
-            if password_choice.lower() == "":
-                password = password_generator()
-                final_password_choice = input(f"New password is {password}. Press Enter to accept, or type 'n' to redo:   ")
-                while final_password_choice.lower() != "" and final_password_choice.lower() != "n":
-                    final_password_choice = input("Please press Enter or type 'n':   ")
-
-                if final_password_choice.lower() == "":
-                    password_confirmed = True
-            else:
-                while not password_confirmed:
-                    password = input("Please enter your desired password:   ")
-                    if not is_password_valid(password):
-                        print("""
-Password Conditions:
-- Only upper- and lowercase letters
-- 0-9 digits
-- !+-.,#?$%* are allowed
-- min. 8 characters
-                        """)
-                    else:
-                        password_confirmation = input("Please repeat it to confirm:   ")
-                        if password_confirmation != password:
-                            print("The passwords don't match")
-                        else:
-                            password_confirmed = True
-
-        safe[service]["password"] = encrypt_password(password)
-        save_to_file()
-        print("Great, password confirmed and saved!")
-
-
-
-#hier kann man die passwörter anschauen die bisher gespeichert wurden
-def read_password():
-    choice = input("View a specific service or all your saved data? (s/a)   ")
-    while choice.lower() != "s" and choice.lower() != "a":
-        choice = input("Please enter either 's' for specific or 'a' for all:   ")
-    if choice.lower() == "s":
-        service_choice = input("Please enter the service you want the login credentials for:   ")
-        while service_choice not in safe:
-            service_choice = input("Please enter an already existing service, or create a new one by typing 'new':   ")
-            if service_choice.lower() == "new":
-                create_password()
-                return
-        print(f"""
-Your saved data:
-
-Service: {service_choice}
-Username: {safe[service_choice]["username"]}
-Password: {decrypt_password(safe[service_choice]["password"])}
-
-        """)
-        return
-    else:
-        for i in safe:
-            print(f"""
----------------------------------------------
-Service: {i}
-Username: {safe[i]["username"]}
-Password: {decrypt_password(safe[i]["password"])}
----------------------------------------------
-""")
-        return
-
-
-
-#entfernen eines Eintrags
-def delete_password():
-    choice = input("Which service do you want to delete?    ")
-    while choice not in safe and choice.lower() != "quit":
-        choice = input("Please enter a already existing service or type *quit* to quit the programm:    ") 
-    if choice.lower() == "quit":
-        print("Deletion cancelled")
-        return
-    else:
-        final_choice = input(f"Sure you want to delete the data for {choice}? *yes* for accepting and *no* for quitting the programm and stopping the process.    ")
-        while final_choice.lower() != "yes" and final_choice.lower() != "no":
-            final_choice = input("Enter either *yes* for confirmation or *no* to stop:  ")
-        if final_choice.lower() == "yes":
-            del safe[choice]
-            print("Succesfully deleted the data for", choice)
-            save_to_file()
-            return
-        else:
-            print("Deletion prevented.")
-            return
 load_from_file()
 load_or_create_key()
 create_password()
