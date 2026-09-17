@@ -143,8 +143,13 @@ def dashboard():
                 else:
                     st.markdown(f"`{safe[i]['username']}`")
             with col3:
-                if st.button("Change", key = f"btn_up{i}"):
-                    st.session_state.edit_username = i
+                is_editing = st.session_state.edit_username == i
+                buttonchange = "Cancel" if is_editing else "Change"
+                if st.button(buttonchange, key= f"btn_up{i}"):
+                    if is_editing:
+                        st.session_state.edit_username = None
+                    else:
+                        st.session_state.edit_username = i
                     st.rerun()
 
 #password teil
@@ -153,7 +158,7 @@ def dashboard():
                 st.write("Password:")
             with col2:
                 if st.session_state.edit_password == i:
-                    password = st.text_input("New password:", type="password", value=decrypt_password(safe[i]["password"]))
+                    password = st.text_input("New password:", type="password", value=decrypt_password(safe[i]["password"])) 
                     col4,col5 = st.columns([1,2])
                     with col4:
                         if st.button("Save", key= f"btn_password{safe[i]}"):
@@ -178,9 +183,15 @@ def dashboard():
                 else:
                     st.markdown(f"`{decrypt_password(safe[i]['password'])}`")
             with col3:
-                if st.button("Change", key= f"btn_down{i}"):
-                    st.session_state.edit_password = i
+                is_editing = st.session_state.edit_password == i
+                buttonchange = "Cancel" if is_editing else "Change"
+                if st.button(buttonchange, key= f"btn_down{i}"):
+                    if is_editing:
+                        st.session_state.edit_password = None
+                    else:
+                        st.session_state.edit_password = i
                     st.rerun()
+                        
 #deletion teil
             col1,col2= st.columns([1,5], vertical_alignment="center")
             with col1:
@@ -188,6 +199,7 @@ def dashboard():
                     if st.session_state.delete_confirm == i:
                         del safe[i]
                         save_to_file()
+                        st.rerun()
                         return
                     else:
                         caption = True
@@ -201,9 +213,7 @@ def dashboard():
 
 
 
-
     save_to_file()
-
 
 
 
